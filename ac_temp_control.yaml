@@ -1,0 +1,116 @@
+blueprint:
+  name: fahadx - project Temp AC - ZigbeeMQTT - Aqa*
+  description: >
+    Temperature control for multi-zone AC. Developed by Fahadx.
+  domain: automation
+  input:
+    target_temp:
+      name: Target temperature
+      default: 22
+      selector:
+        number:
+          min: 16
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    eco_temp:
+      name: Eco temperature
+      default: 26
+      selector:
+        number:
+          min: 20
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    delay_minutes:
+      name: Action delay (minutes)
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+          unit_of_measurement: "minutes"
+
+    temperature_sensors:
+      name: Temperature sensors (one per zone)
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+          multiple: true
+
+    climate_entities:
+      name: AC units (same order as sensors)
+      selector:
+        entity:
+          domain: climate
+          multiple: true
+
+mode: single
+
+trigger:
+  - platform: time_pattern
+    minutes: "/5"
+
+condition: []
+
+action:
+  - variables:
+      target: !input target_temp
+      eco: !input eco_temp
+      sensors: !input temperature_sensors
+      climates: !input climate_entities
+
+  - repeat:
+      count: "{{ [sensors | count, climates | count] | min }}"
+      sequence:
+        - variables:
+            sensor: "{{ sensors[repeat.index - 1] }}"
+            climate: "{{ climates[repeat.index - 1] }}"
+            temp_now: "{{ states(sensor) | float(0) }}"
+            diff: "{{ temp_now - target }}"
+
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ diff > 3 }}"
+              sequence:
+                - service: climate.set_temperature
+                  data:
+                    entity_id: "{{ climate }}"
+                    temperature: "{{ target - 3 }}"
+
+            - conditions:
+                - condition: template
+                  value_template: "{{ diff > 1.5 }}"
+              sequence:
+                - service: climate.set_temperature
+                  data:
+                    entity_id: "{{ climate }}"
+                    temperature: "{{ target - 2 }}"
+
+            - conditions:
+                - condition: template
+                  value_template: "{{ diff > 0.5 }}"
+              sequence:
+                - service: climate.set_temperature
+                  data:
+                    entity_id: "{{ climate }}"
+                    temperature: "{{ target }}"
+
+            - conditions:
+                - condition: template
+                  value_template: "{{ diff < -1.5 }}"
+              sequence:
+                - service: climate.set_temperature
+                  data:
+                    entity_id: "{{ climate }}"
+                    temperature: "{{ eco }}"
+
+        - service: system_log.write
+          data:
+            level: info
+            message: >
+              [AC] Sensor: {{ sensor }} | Climate: {{ climate }} | Temp: {{ temp_now }} | Δ: {{ diff }}
