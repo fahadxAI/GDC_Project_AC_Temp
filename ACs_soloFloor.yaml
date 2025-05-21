@@ -104,9 +104,8 @@ action:
       - conditions:
           - condition: trigger
             id: time_trigger
-          - condition: state
-            entity_id: !input enable_sleep_mode
-            state: "on"
+          - condition: template
+            value_template: "{{ enable_sleep_mode }}"
         sequence:
           - service: climate.set_hvac_mode
             target:
