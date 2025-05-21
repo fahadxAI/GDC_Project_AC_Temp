@@ -1,12 +1,10 @@
 blueprint:
-  name: External Sensor AC Control
-  description: Smart AC with external sensor
+  name: Smart AC Control
+  description: Auto AC control using external sensor. Created by Fahad.
   domain: automation
-  author: xfahad
-
   input:
     climate_device:
-      name: Climate
+      name: AC
       selector:
         entity:
           domain: climate
@@ -22,61 +20,26 @@ blueprint:
         number:
           min: 16
           max: 30
-          step: 0.5
-          unit_of_measurement: °C
+          unit_of_measurement: "°C"
     margin:
       name: Margin
-      default: 1.0
       selector:
         number:
           min: 0.5
-          max: 3.0
+          max: 5.0
           step: 0.1
+          unit_of_measurement: "°C"
     cooldown_time:
-      name: Cooldown (sec)
-      default: 120
+      name: Cooldown
       selector:
         number:
           min: 30
-          max: 600
-          step: 10
-
-mode: single
-
-variables:
-  current_temp: "{{ states(inputs.temperature_sensor) | float }}"
-  target_temp: "{{ inputs.target_temperature | float }}"
-  margin: "{{ inputs.margin | float }}"
-  ac_state: "{{ state_attr(inputs.climate_device, 'hvac_action') }}"
-  cooldown: "{{ inputs.cooldown_time | int }}"
-  last_changed: >
-    {{ (as_timestamp(now()) - as_timestamp(state_attr(this.entity_id, 'last_triggered') or 0)) | int }}
+          max: 3600
+          unit_of_measurement: "s"
 
 trigger:
   - platform: state
     entity_id: !input temperature_sensor
 
-condition:
-  - condition: template
-    value_template: "{{ last_changed > cooldown }}"
-
-action:
-  - choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ current_temp > (target_temp + margin) }}"
-        sequence:
-          - service: climate.turn_on
-            target:
-              entity_id: !input climate_device
-          - service: climate.set_temperature
-            data:
-              entity_id: !input climate_device
-              temperature: "{{ target_temp }}"
-      - conditions:
-          - condition: template
-            value_template: "{{ current_temp < (target_temp - margin) }}"
-        sequence:
-          - service: climate.turn_off
-            target:
-              entity_id: !input climate_device
+variables:
+  current_temp_
