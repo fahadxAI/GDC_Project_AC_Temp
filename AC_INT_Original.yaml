@@ -44,10 +44,10 @@ trigger:
     entity_id: !input temperature_sensor
 
 variables:
-  current_temp: "{{ states[!input temperature_sensor] | float }}"
-  target_temp: !input target_temperature
-  margin: !input margin
-  cooldown: !input cooldown_time
+  current_temp: "{{ states[inputs.temperature_sensor] | float }}"
+  target_temp: "{{ inputs.target_temperature | float }}"
+  margin: "{{ inputs.margin | float }}"
+  cooldown: "{{ inputs.cooldown_time | int }}"
   ac: !input climate_device
   ac_state: "{{ state_attr(ac, 'hvac_action') }}"
   last_changed: "{{ as_timestamp(now()) - as_timestamp(state_attr(this.entity_id, 'last_triggered') or 0) }}"
