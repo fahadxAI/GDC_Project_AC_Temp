@@ -5,6 +5,8 @@ blueprint:
     - Sets a sleep temperature at 5:00 PM.
     - Intervenes during night time only if temperature exceeds a critical limit.
     - Operates during daytime hours with temperature thresholds.
+    - If temperature drops too low during daytime, it switches AC to 'auto' mode to pause cooling.
+    
     Created by Fahad (@fahad) — Naqsh Holding
   domain: automation
   input:
@@ -51,8 +53,8 @@ blueprint:
           unit_of_measurement: "°C"
 
     lower_limit_temp:
-      name: Minimum Temperature Before Turning Off (Daytime)
-      default: 21.5
+      name: Minimum Temperature Before Cooling Pause (Daytime)
+      default: 21
       selector:
         number:
           min: 18
@@ -146,7 +148,7 @@ action:
             data:
               temperature: !input daytime_cool_temp
 
-      # 4. Daytime Shutdown if temperature drops too low
+      # 4. Daytime Cooling Pause if temperature drops too low
       - conditions:
           - condition: time
             after: "06:00:00"
@@ -158,4 +160,4 @@ action:
             target:
               entity_id: !input climate_entity
             data:
-              hvac_mode: "off"
+              hvac_mode: auto
