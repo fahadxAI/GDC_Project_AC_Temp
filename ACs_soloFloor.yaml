@@ -2,7 +2,7 @@ blueprint:
   name: Smart Climate Control Based on Time and Temperature
   description: >
     A smart automation blueprint to manage AC operation based on temperature and time.
-    - Sets a sleep temperature at 5:00 PM.
+    - Optional: Set a sleep temperature at 5:00 PM.
     - Intervenes during night time only if temperature exceeds a critical limit.
     - Operates during daytime hours with temperature thresholds.
     - If temperature drops too low during daytime, it switches AC to 'auto' mode to pause cooling.
@@ -21,6 +21,12 @@ blueprint:
       selector:
         entity:
           domain: sensor
+
+    enable_sleep_mode:
+      name: Enable Sleep Mode at 5:00 PM
+      default: true
+      selector:
+        boolean:
 
     sleep_temperature:
       name: Sleep Temperature
@@ -94,10 +100,13 @@ condition: []
 
 action:
   - choose:
-      # 1. Sleep Mode Activation at 5:00 PM
+      # 1. Sleep Mode Activation at 5:00 PM (Optional)
       - conditions:
           - condition: trigger
             id: time_trigger
+          - condition: state
+            entity_id: !input enable_sleep_mode
+            state: "on"
         sequence:
           - service: climate.set_hvac_mode
             target:
