@@ -1,84 +1,38 @@
 blueprint:
   name: Smart AC Control
-  description: Auto AC control using external sensor. Created by Fahad.
-  domain: automation
   input:
+    climate_device:
+      name: AC
+      selector:
+        entity:
+          domain: climate
     temperature_sensor:
       name: Sensor
       selector:
         entity:
           domain: sensor
           device_class: temperature
-    climate_device:
-      name: AC
-      selector:
-        entity:
-          domain: climate
     target_temperature:
       name: Target
-      default: 22
       selector:
         number:
           min: 16
           max: 30
           step: 0.5
-          unit_of_measurement: °C
+          unit_of_measurement: "°C"
     margin:
       name: Margin
-      default: 1
       selector:
         number:
-          min: 0.1
+          min: 0.5
           max: 5
           step: 0.1
-          unit_of_measurement: °C
+          unit_of_measurement: "°C"
     cooldown_time:
       name: Cooldown
-      default: 180
       selector:
         number:
           min: 30
           max: 3600
-          step: 10
-          unit_of_measurement: s
-
-mode: restart
-
-variables:
-  current_temp: '{{ states(input.temperature_sensor) | float }}'
-  target_temp: '{{ input.target_temperature | float }}'
-  margin: '{{ input.margin | float }}'
-  cooldown: '{{ input.cooldown_time | int }}'
-  ac: '{{ input.climate_device }}'
-  last_changed: >-
-    {{ (as_timestamp(now()) - as_timestamp(state_attr(this.entity_id, 'last_triggered') or 0)) | int }}
-
-trigger:
-  - platform: state
-    entity_id: !input temperature_sensor
-
-condition:
-  - condition: template
-    value_template: '{{ last_changed > cooldown }}'
-
-action:
-  - choose:
-      - conditions:
-          - condition: template
-            value_template: '{{ current_temp > target_temp + margin }}'
-        sequence:
-          - service: climate.set_hvac_mode
-            target:
-              entity_id: '{{ ac }}'
-            data:
-              hvac_mode: cool
-      - conditions:
-          - condition: template
-            value_template: '{{ current_temp < target_temp - margin }}'
-        sequence:
-          - service: climate.set_hvac_mode
-            target:
-              entity_id: '{{ ac }}'
-            data:
-              hvac_mode: 'off'
-    default: []
+          step: 30
+          unit_of_measurement: "s"
