@@ -20,8 +20,8 @@ blueprint:
         number:
           min: 16
           max: 30
-          unit_of_measurement: °C
           step: 0.5
+          unit_of_measurement: °C
     margin:
       name: Margin
       selector:
@@ -43,20 +43,20 @@ trigger:
   - platform: state
     entity_id: !input temperature_sensor
 
-variables:
-  current_temp: "{{ states[inputs.temperature_sensor] | float }}"
-  target_temp: "{{ inputs.target_temperature | float }}"
-  margin: "{{ inputs.margin | float }}"
-  cooldown: "{{ inputs.cooldown_time | int }}"
-  ac: !input climate_device
-  ac_state: "{{ state_attr(ac, 'hvac_action') }}"
-  last_changed: "{{ as_timestamp(now()) - as_timestamp(state_attr(this.entity_id, 'last_triggered') or 0) }}"
+condition: []
 
-condition:
+action:
+  - variables:
+      current_temp: "{{ states[trigger.entity_id] | float }}"
+      target_temp: !input target_temperature
+      margin: !input margin
+      cooldown: !input cooldown_time
+      ac: !input climate_device
+      last_changed: "{{ (as_timestamp(now()) - as_timestamp(state_attr(this.entity_id, 'last_triggered') or 0)) | int }}"
+
   - condition: template
     value_template: "{{ last_changed > cooldown }}"
 
-action:
   - choose:
       - conditions:
           - condition: template
@@ -71,6 +71,7 @@ action:
               hvac_mode: cool
             target:
               entity_id: !input climate_device
+
       - conditions:
           - condition: template
             value_template: "{{ current_temp < (target_temp - margin) }}"
@@ -80,4 +81,3 @@ action:
               entity_id: !input climate_device
 
 mode: restart
-max_exceeded: silent
