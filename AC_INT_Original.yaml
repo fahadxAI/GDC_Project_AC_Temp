@@ -71,3 +71,16 @@ action:
               entity_id: "{{ ac }}"
           - service: climate.set_temperature
             data:
+              temperature: "{{ target_temp }}"
+            target:
+              entity_id: "{{ ac }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ current_temp < (target_temp - margin) }}"
+        sequence:
+          - service: climate.turn_off
+            target:
+              entity_id: "{{ ac }}"
+
+mode: single
