@@ -1,17 +1,21 @@
 blueprint:
   name: Smart AC Control
+  description: Auto AC control using external sensor. Created by Fahad.
+  domain: automation
   input:
     climate_device:
       name: AC
       selector:
         entity:
           domain: climate
+
     temperature_sensor:
       name: Sensor
       selector:
         entity:
           domain: sensor
           device_class: temperature
+
     target_temperature:
       name: Target
       selector:
@@ -20,6 +24,7 @@ blueprint:
           max: 30
           step: 0.5
           unit_of_measurement: "°C"
+
     margin:
       name: Margin
       selector:
@@ -28,6 +33,7 @@ blueprint:
           max: 5
           step: 0.1
           unit_of_measurement: "°C"
+
     cooldown_time:
       name: Cooldown
       selector:
@@ -36,3 +42,32 @@ blueprint:
           max: 3600
           step: 30
           unit_of_measurement: "s"
+
+trigger:
+  - platform: state
+    entity_id: !input temperature_sensor
+
+variables:
+  current_temp: "{{ states(!input temperature_sensor) | float }}"
+  target_temp: !input target_temperature
+  margin: !input margin
+  cooldown: !input cooldown_time
+  ac: !input climate_device
+  last_changed: >
+    {{ (as_timestamp(now()) - as_timestamp(state_attr(this.entity_id, 'last_triggered') or 0)) | int }}
+
+condition:
+  - condition: template
+    value_template: "{{ last_changed > cooldown }}"
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ current_temp > (target_temp + margin) }}"
+        sequence:
+          - service: climate.turn_on
+            target:
+              entity_id: "{{ ac }}"
+          - service: climate.set_temperature
+            data:
