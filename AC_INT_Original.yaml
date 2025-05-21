@@ -20,26 +20,64 @@ blueprint:
         number:
           min: 16
           max: 30
-          unit_of_measurement: "°C"
+          unit_of_measurement: °C
+          step: 0.5
     margin:
       name: Margin
       selector:
         number:
-          min: 0.5
-          max: 5.0
+          min: 0.1
+          max: 5
           step: 0.1
-          unit_of_measurement: "°C"
+          unit_of_measurement: °C
     cooldown_time:
       name: Cooldown
       selector:
         number:
-          min: 30
+          min: 60
           max: 3600
-          unit_of_measurement: "s"
+          step: 30
+          unit_of_measurement: s
 
 trigger:
   - platform: state
     entity_id: !input temperature_sensor
 
 variables:
-  current_temp_
+  current_temp: "{{ states[!input temperature_sensor] | float }}"
+  target_temp: !input target_temperature
+  margin: !input margin
+  cooldown: !input cooldown_time
+  ac: !input climate_device
+  ac_state: "{{ state_attr(ac, 'hvac_action') }}"
+  last_changed: "{{ as_timestamp(now()) - as_timestamp(state_attr(this.entity_id, 'last_triggered') or 0) }}"
+
+condition:
+  - condition: template
+    value_template: "{{ last_changed > cooldown }}"
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ current_temp > (target_temp + margin) }}"
+        sequence:
+          - service: climate.turn_on
+            target:
+              entity_id: !input climate_device
+          - service: climate.set_temperature
+            data:
+              temperature: !input target_temperature
+              hvac_mode: cool
+            target:
+              entity_id: !input climate_device
+      - conditions:
+          - condition: template
+            value_template: "{{ current_temp < (target_temp - margin) }}"
+        sequence:
+          - service: climate.turn_off
+            target:
+              entity_id: !input climate_device
+
+mode: restart
+max_exceeded: silent
