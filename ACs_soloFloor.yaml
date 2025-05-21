@@ -1,0 +1,159 @@
+blueprint:
+  name: fahadx Climate Control Based on Time and Temperature
+  description: >
+    A smart automation blueprint to manage AC operation based on temperature and time:
+    - Sets a sleep temperature at 5:00 PM.
+    - Intervenes during night time only if temperature exceeds a critical limit.
+    - Operates during daytime hours with temperature thresholds.
+  domain: automation
+  input:
+    climate_entity:
+      name: Climate Device
+      selector:
+        entity:
+          domain: climate
+
+    temperature_sensor:
+      name: Temperature Sensor
+      selector:
+        entity:
+          domain: sensor
+
+    sleep_temperature:
+      name: Sleep Temperature
+      default: 25
+      selector:
+        number:
+          min: 18
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    critical_temp:
+      name: Critical Temperature (Night)
+      default: 28
+      selector:
+        number:
+          min: 25
+          max: 35
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    daytime_cool_temp:
+      name: Cooling Threshold (Daytime)
+      default: 22
+      selector:
+        number:
+          min: 18
+          max: 26
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    lower_limit_temp:
+      name: Minimum Temperature Before Turning Off (Daytime)
+      default: 21.5
+      selector:
+        number:
+          min: 18
+          max: 25
+          step: 0.5
+          unit_of_measurement: "°C"
+
+mode: single
+
+trigger:
+  - platform: time
+    at: "17:00:00"
+
+  - platform: numeric_state
+    entity_id: !input temperature_sensor
+    above: !input critical_temp
+    for:
+      minutes: 10
+
+  - platform: numeric_state
+    entity_id: !input temperature_sensor
+    above: !input daytime_cool_temp
+    for:
+      minutes: 10
+
+  - platform: numeric_state
+    entity_id: !input temperature_sensor
+    below: !input lower_limit_temp
+    for:
+      minutes: 10
+
+condition: []
+
+action:
+  - choose:
+      # Sleep mode activation at 5 PM
+      - conditions:
+          - condition: time
+            at: "17:00:00"
+        sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: cool
+          - service: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: !input sleep_temperature
+
+      # Nighttime critical temperature override
+      - conditions:
+          - condition: time
+            after: "17:00:00"
+            before: "06:00:00"
+          - condition: numeric_state
+            entity_id: !input temperature_sensor
+            above: !input critical_temp
+        sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: cool
+          - service: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: !input sleep_temperature
+
+      # Daytime cooling when temperature is high
+      - conditions:
+          - condition: time
+            after: "06:00:00"
+            before: "17:00:00"
+          - condition: numeric_state
+            entity_id: !input temperature_sensor
+            above: !input daytime_cool_temp
+        sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: cool
+          - service: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: !input daytime_cool_temp
+
+      # Daytime shutdown when temperature is too low
+      - conditions:
+          - condition: time
+            after: "06:00:00"
+            before: "17:00:00"
+          - condition: numeric_state
+            entity_id: !input temperature_sensor
+            below: !input lower_limit_temp
+        sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: "off"
