@@ -89,8 +89,8 @@ action:
   - choose:
       # Sleep mode activation at 5 PM
       - conditions:
-          - condition: time
-            at: "17:00:00"
+          - condition: trigger
+            id: "time_5pm"
         sequence:
           - service: climate.set_hvac_mode
             target:
